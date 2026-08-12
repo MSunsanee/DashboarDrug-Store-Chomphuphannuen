@@ -1830,4 +1830,36 @@ document.addEventListener('change',e=>{if(e.target.matches('#txForm [name="expir
 document.addEventListener('reset',e=>{if(e.target.id!=='txForm')return;const box=$('#entryExpiryLive');if(box){box.className='entry-expiry-live';box.textContent=''}setTimeout(updateEntryExpiryWarning,0)});
 document.addEventListener('DOMContentLoaded',updateEntryExpiryWarning);
 </script>
+<style>
+.public-mode-note{margin-top:10px;padding:10px 12px;border-radius:10px;background:#eef8f5;color:#17665d;font-size:13px;line-height:1.45}
+#publicModeBtn{background:#e5f3ef;color:#126c62;border:1px solid #9fd1c8}
+</style>
+<script>
+/* Public read-only demo mode: local session only; never receives a write token. */
+function isPublicMode(){return authUser?.username==='public'}
+const apiBeforePublicMode=api;
+api=async function(action,payload={}){
+  const readOnlyActions=['bootstrap','login','logout','lineAlertStatus'];
+  if(isPublicMode()&&!readOnlyActions.includes(action))throw new Error('โหมดสาธารณะเป็นสิทธิ์ดูและทดลองใช้เท่านั้น ไม่สามารถบันทึก แก้ไข หรือลบข้อมูลได้');
+  return apiBeforePublicMode(action,payload);
+};
+function enterPublicMode(){
+  authToken='';authUser={username:'public',name:'ผู้เยี่ยมชมสาธารณะ',position:'โหมดดูอย่างเดียว',role:'viewer',loginAt:new Date().toISOString()};
+  sessionStorage.removeItem('ppcu-auth-token');sessionStorage.setItem('ppcu-auth-user',JSON.stringify(authUser));
+  $('#loginModal')?.classList.remove('open');render();nav('inventory');toast('เข้าสู่โหมดสาธารณะแล้ว · ทดลองใช้ได้โดยไม่มีการบันทึกข้อมูล');setSync(true,'โหมดสาธารณะ · ดูอย่างเดียว');
+}
+function installPublicModeButton(){
+  const form=$('#loginForm');if(!form||$('#publicModeBtn'))return;
+  const button=document.createElement('button');button.type='button';button.id='publicModeBtn';button.className='btn';button.textContent='เข้าชมแบบสาธารณะ';button.addEventListener('click',enterPublicMode);form.append(button);
+  const note=document.createElement('div');note.className='public-mode-note';note.textContent='โหมดสาธารณะ: เปิดดูและทดลองกรอกแบบฟอร์มได้ แต่ไม่สามารถบันทึก แก้ไข ลบ นำเข้า หรือพิมพ์ข้อมูล';form.append(note);
+}
+const publicProfileBase=updateAuthProfile;
+updateAuthProfile=function(){
+  if(!isPublicMode()){publicProfileBase();installPublicModeButton();if(!authUser){const profile=$('.profile');if(profile&&!$('#publicProfileBtn')){const button=document.createElement('button');button.id='publicProfileBtn';button.className='icon-btn';button.style.cssText='width:100%;margin-top:8px';button.textContent='เข้าชมแบบสาธารณะ';button.addEventListener('click',enterPublicMode);profile.append(button)}}return}
+  const profile=$('.profile');if(!profile)return;
+  profile.innerHTML='<div style="margin-bottom:8px"><b>ผู้เยี่ยมชมสาธารณะ</b><br><span>โหมดดูอย่างเดียว</span><br><small>ทดลองใช้งานได้ · ระบบจะไม่บันทึกข้อมูล</small></div><button class="icon-btn" id="logoutBtn" style="width:100%">ออกจากโหมดสาธารณะ</button>';
+  $('#logoutBtn').addEventListener('click',logoutSystem);
+};
+document.addEventListener('DOMContentLoaded',()=>{installPublicModeButton();updateAuthProfile();if(isPublicMode()){applyPermissions();setSync(true,'โหมดสาธารณะ · ดูอย่างเดียว')}});
+</script>
 </body></html>
