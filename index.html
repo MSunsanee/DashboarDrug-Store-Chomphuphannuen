@@ -1827,6 +1827,7 @@ renderDashboardExpiryAlert=function(){
 };
 document.addEventListener('input',e=>{if(e.target.matches('#txForm [name="expiry"],#txForm [name="lotNo"],#drugSelect'))updateEntryExpiryWarning()});
 document.addEventListener('change',e=>{if(e.target.matches('#txForm [name="expiry"],#txForm [name="lotNo"],#drugSelect'))updateEntryExpiryWarning()});
+document.addEventListener('reset',e=>{if(e.target.id!=='txForm')return;const box=$('#entryExpiryLive');if(box){box.className='entry-expiry-live';box.textContent=''}setTimeout(updateEntryExpiryWarning,0)});
 document.addEventListener('DOMContentLoaded',updateEntryExpiryWarning);
 </script>
 </body></html>
