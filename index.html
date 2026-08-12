@@ -1786,4 +1786,47 @@ document.addEventListener('DOMContentLoaded',()=>{renderDashboardExpiryAlert();b
 <style>
 .expiry-click-card{cursor:pointer!important}.expiry-click-card:hover{transform:translateY(-3px);filter:saturate(1.08)}.expiry-click-card:after{content:'กดเพื่อดูรายละเอียด';position:absolute;right:13px;bottom:9px;font-size:10px;font-weight:700;color:#7d1420}
 </style>
+<style>
+/* Expiry alert levels: orange <= 6 months, red <= 3 months including expired. */
+.entry-expiry-live{display:none;grid-column:1/-1;margin-top:-4px;padding:13px 16px;border-radius:13px;font-size:16px;font-weight:800;line-height:1.45}
+.entry-expiry-live.orange{display:block;background:#fff0da;border:2px solid #f28a24;color:#a94700}
+.entry-expiry-live.red{display:block;background:#ffe1e1;border:3px solid #df1f2d;color:#c00000;box-shadow:0 8px 22px rgba(210,20,35,.18)}
+.dashboard-expiry-alert.has-critical{border-color:#e32432!important;border-left-color:#e32432!important;background:linear-gradient(135deg,#fff4f4,#ffd9d9)!important}
+.dashboard-expiry-alert.has-critical .dashboard-expiry-head b,.dashboard-expiry-alert.has-critical .dashboard-expiry-head span{color:#c00000!important}
+.dashboard-expiry-alert .expiry-level-summary{font-size:16px!important;font-weight:800!important}
+.dashboard-expiry-alert tr.warning td{background:#fff0d8!important}.dashboard-expiry-alert tr.expiring td,.dashboard-expiry-alert tr.expired td{background:#ffe1e1!important;color:#a90000!important}
+</style>
+<script>
+/* Exact calendar-month expiry levels and immediate on-screen warning while receiving stock. */
+status=function(value){
+  const expiry=parseLocalDate(value);if(!expiry)return['ปกติ','',''];
+  const today=new Date();today.setHours(0,0,0,0);
+  const three=new Date(today);three.setMonth(three.getMonth()+3);
+  const six=new Date(today);six.setMonth(six.getMonth()+6);
+  if(expiry<today)return['หมดอายุแล้ว','red','expired'];
+  if(expiry<=three)return['เหลือไม่เกิน 3 เดือน','red','expiring'];
+  if(expiry<=six)return['เหลือไม่เกิน 6 เดือน','orange','warning'];
+  return['ปกติ','',''];
+};
+dashboardExpiryRows=function(){return state.inventory.map(x=>({...x,d:drug(x.drugKey),alert:status(x.expiry)})).filter(x=>+x.balance>0&&['warning','expiring','expired'].includes(x.alert[2])).sort((a,b)=>String(a.expiry||'').localeCompare(String(b.expiry||'')))};
+function parseLocalDate(value){const m=String(value||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(+m[1],+m[2]-1,+m[3]):null}
+function updateEntryExpiryWarning(){
+  const form=$('#txForm'),input=form?.elements.expiry;if(!form||!input)return;
+  let box=$('#entryExpiryLive');if(!box){box=document.createElement('div');box.id='entryExpiryLive';box.className='entry-expiry-live';input.closest('.field')?.insertAdjacentElement('afterend',box)}
+  const expiry=parseLocalDate(input.value),level=status(input.value),drugItem=state.master.find(x=>x.key===form.elements.drugKey.value),lot=form.elements.lotNo.value||'-';
+  box.className='entry-expiry-live';box.textContent='';if(!expiry||!['warning','expiring','expired'].includes(level[2]))return;
+  const name=[drugItem?.name,drugItem?.form,drugItem?.strength].filter(Boolean).join(' · ')||'รายการที่กำลังบันทึก',date=formatDateForDisplay(input.value);
+  if(level[2]==='warning'){box.classList.add('orange');box.textContent=`⚠️ เฝ้าระวัง: ${name} · Lot ${lot} · หมดอายุ ${date} · เหลืออายุไม่เกิน 6 เดือน`}
+  else{box.classList.add('red');box.textContent=`🚨 ต้องดำเนินการทันที: ${name} · Lot ${lot} · หมดอายุ ${date} · ${level[0]}`}
+}
+const renderDashboardExpiryAlertLevelBase=renderDashboardExpiryAlert;
+renderDashboardExpiryAlert=function(){
+  renderDashboardExpiryAlertLevelBase();const box=$('#dashboardExpiryAlert');if(!box)return;
+  const stocked=state.inventory.map(x=>({...x,alert:status(x.expiry)})).filter(x=>+x.balance>0),orange=stocked.filter(x=>x.alert[2]==='warning').length,red=stocked.filter(x=>['expiring','expired'].includes(x.alert[2])).length;
+  box.classList.toggle('has-critical',red>0);const span=box.querySelector('.dashboard-expiry-head span');if(span){span.className='expiry-level-summary';span.innerHTML=`<span style="color:#d76900">สีส้ม ≤ 6 เดือน ${orange} ล็อต</span> · <span style="color:#c00000">สีแดง ≤ 3 เดือน/หมดอายุ ${red} ล็อต</span>`}
+};
+document.addEventListener('input',e=>{if(e.target.matches('#txForm [name="expiry"],#txForm [name="lotNo"],#drugSelect'))updateEntryExpiryWarning()});
+document.addEventListener('change',e=>{if(e.target.matches('#txForm [name="expiry"],#txForm [name="lotNo"],#drugSelect'))updateEntryExpiryWarning()});
+document.addEventListener('DOMContentLoaded',updateEntryExpiryWarning);
+</script>
 </body></html>
