@@ -1862,4 +1862,45 @@ updateAuthProfile=function(){
 };
 document.addEventListener('DOMContentLoaded',()=>{installPublicModeButton();updateAuthProfile();if(isPublicMode()){applyPermissions();setSync(true,'โหมดสาธารณะ · ดูอย่างเดียว')}});
 </script>
+<style id="responsive-device-layout">
+/* Responsive screen layout only. Printing rules remain A4 as configured above. */
+:root{--mobile-nav-height:68px}
+html,body{max-width:100%;overflow-x:hidden}
+.main,.page,.panel,.stat,.field{min-width:0}
+.table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}
+img,svg,canvas{max-width:100%}
+@media screen and (min-width:1001px) and (max-width:1280px){
+ .app{grid-template-columns:220px minmax(0,1fr)}.side{padding:20px 12px}.brand{margin-inline:4px}.nav button{padding:11px 10px}.main{padding:24px 22px 52px}
+ .stats{grid-template-columns:repeat(3,minmax(0,1fr))}.groups{grid-template-columns:repeat(3,minmax(0,1fr))}.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:17px}
+}
+@media screen and (max-width:1000px){
+ body{padding-bottom:env(safe-area-inset-bottom)}.app{display:block;min-height:100dvh}.side{display:none!important}
+ .main{width:100%;max-width:100%;padding:18px 18px calc(var(--mobile-nav-height) + 24px + env(safe-area-inset-bottom))}
+ .top{align-items:flex-start;gap:12px;margin-bottom:18px;flex-wrap:wrap}.top>div:first-child{min-width:0;flex:1 1 65%}.top h2{font-size:clamp(23px,4vw,30px);line-height:1.2}.top p{font-size:clamp(13px,2vw,17px);overflow-wrap:anywhere}.sync{flex:0 0 auto;min-height:32px}
+ .mobile-nav{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:50;height:calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));padding:6px 4px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(18,61,56,.12);backdrop-filter:blur(12px)}
+ .mobile-nav button{min-width:0;min-height:50px;padding:5px 2px;border:0;background:transparent;color:var(--muted);font-size:11px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.mobile-nav button.active{color:var(--teal);font-weight:800;background:#e8f6f2;border-radius:12px}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.groups{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.panel{padding:17px;border-radius:18px}
+ .panel-head{align-items:flex-start;flex-wrap:wrap}.panel-head>*,.report-controls>*{min-width:0}.toolbar{width:100%;align-items:stretch}.toolbar .search{flex:1 1 240px}.report-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .dashboard-expiry-alert{max-width:100%;overflow:hidden}.dashboard-expiry-head{gap:12px;flex-wrap:wrap!important}.dashboard-expiry-actions{display:flex;gap:8px;flex-wrap:wrap}
+ .dialog{width:min(720px,calc(100vw - 28px));max-height:calc(100dvh - 28px)}
+ #requisition{max-width:100%;overflow:hidden}#requisition>.req-paper{width:100%!important;min-height:0!important;padding:18px!important;overflow-x:auto;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}
+ #requisition>.req-paper>.req-table,#requisition>.req-paper>.p3101-document-grid,#requisition>.req-paper>.p3101-live-table,#requisition>.req-paper>.p3101-screen-sign{min-width:760px}.req-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .toast{left:16px;right:16px;bottom:calc(var(--mobile-nav-height) + 12px + env(safe-area-inset-bottom));text-align:center}
+}
+@media screen and (max-width:600px){
+ :root{--mobile-nav-height:64px}.main{padding:12px 11px calc(var(--mobile-nav-height) + 20px + env(safe-area-inset-bottom))}
+ .top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;margin-bottom:14px}.top h2{font-size:24px}.top p{font-size:13px}.sync{font-size:11px;justify-self:end}
+ .stats{gap:9px;margin-bottom:12px}.stat{padding:14px 13px;min-height:124px;border-radius:16px}.stat .label{font-size:11px;line-height:1.35}.stat .value{font-size:22px;overflow-wrap:anywhere}.stat .hint{font-size:10.5px;line-height:1.35}
+ .groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.group{padding:12px;min-height:92px}.group b{font-size:18px}.panel{padding:13px;margin-bottom:12px;border-radius:16px}.panel h3{font-size:16px}
+ .panel-head{display:grid;grid-template-columns:1fr;width:100%;gap:10px}.toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.toolbar .search,.toolbar select,.toolbar .field{grid-column:1/-1;width:100%;min-width:0}.toolbar .btn{width:100%;min-width:0}
+ .form-grid{grid-template-columns:1fr!important;gap:11px}.span2{grid-column:1!important}.field input,.field select,.search,textarea{width:100%;font-size:16px!important;min-height:46px}.btn,.icon-btn,button{min-height:44px;touch-action:manipulation}
+ .type-toggle{display:grid;grid-template-columns:1fr 1fr}.actions{gap:8px}.actions .icon-btn{min-width:44px}.table-wrap{border-radius:12px}.table-wrap table{min-width:720px;font-size:12px}.table-wrap th,.table-wrap td{padding:10px 9px}
+ .report-summary-cards{grid-template-columns:1fr 1fr!important;gap:8px!important}.report-summary-cards .stat{min-height:105px}
+ .dashboard-expiry-alert{padding:13px!important;border-radius:15px!important}.dashboard-expiry-head{display:grid!important;grid-template-columns:1fr!important}.dashboard-expiry-actions{display:grid;grid-template-columns:1fr;width:100%}.dashboard-expiry-actions .btn{width:100%}.entry-expiry-live{font-size:14px;padding:11px 12px}
+ .modal{padding:0;place-items:end center}.dialog{width:100%;max-width:none;max-height:92dvh;border-radius:20px 20px 0 0;padding:17px}.dialog-head{position:sticky;top:-17px;z-index:2;background:#fff;padding:13px 0 10px}
+ #requisition>.req-paper{padding:12px!important;border-radius:14px;box-shadow:none}#requisition>.req-paper>.req-table,#requisition>.req-paper>.p3101-document-grid,#requisition>.req-paper>.p3101-live-table,#requisition>.req-paper>.p3101-screen-sign{min-width:700px}.req-head h3{font-size:20px}.req-meta{grid-template-columns:1fr;gap:8px}.signatures{min-width:680px}.mobile-nav button{font-size:10px}
+}
+@media screen and (max-width:340px){.stats,.report-summary-cards{grid-template-columns:1fr!important}.stat{min-height:108px}}
+@media screen and (orientation:landscape) and (max-height:600px) and (max-width:1000px){:root{--mobile-nav-height:56px}.mobile-nav button{min-height:42px;font-size:10px}.main{padding-top:10px}.top{margin-bottom:10px}}
+</style>
 </body></html>
