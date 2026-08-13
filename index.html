@@ -1862,6 +1862,36 @@ updateAuthProfile=function(){
 };
 document.addEventListener('DOMContentLoaded',()=>{installPublicModeButton();updateAuthProfile();if(isPublicMode()){applyPermissions();setSync(true,'โหมดสาธารณะ · ดูอย่างเดียว')}});
 </script>
+<style id="valuation-mean-stock-style">
+.valuation-detail-table tr.below-mean-stock td{background:#fff0f0!important;color:#981b1b}
+.valuation-detail-table .stock-ok{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e4f5ef;color:#147164;font-weight:800}
+.valuation-detail-table .stock-low{display:inline-flex;padding:4px 8px;border-radius:999px;background:#ffdada;color:#b21725;font-weight:800}
+.valuation-mean-note{margin-top:10px;padding:10px 12px;border-radius:11px;background:#eef8f5;color:#376963;font-size:12px;line-height:1.5}
+</style>
+<script>
+/* Monthly usage and one-month minimum stock calculated from actual issue transactions. */
+function valuationUsageMean(drugKey){
+  const issues=state.transactions.filter(x=>x.drugKey===drugKey&&x.type==='จ่ายออก'&&String(x.date||'').slice(0,7));
+  if(!issues.length)return{monthlyUse:0,meanStock:0,months:0};
+  const now=new Date(),currentMonth=new Date(now.getFullYear(),now.getMonth(),1),firstKey=issues.map(x=>String(x.date).slice(0,7)).sort()[0],parts=firstKey.split('-').map(Number),firstMonth=new Date(parts[0],parts[1]-1,1),twelveMonthStart=new Date(now.getFullYear(),now.getMonth()-11,1),start=firstMonth>twelveMonthStart?firstMonth:twelveMonthStart;
+  const months=Math.max(1,(currentMonth.getFullYear()-start.getFullYear())*12+currentMonth.getMonth()-start.getMonth()+1),startKey=`${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}`,total=issues.filter(x=>String(x.date).slice(0,7)>=startKey).reduce((s,x)=>s+(+x.qty||0),0),monthlyUse=total/months;
+  return{monthlyUse,meanStock:monthlyUse>0?Math.ceil(monthlyUse):0,months};
+}
+valuationDetailRows=function(groupName){
+  const group=VALUATION_GROUPS.find(g=>g.name===groupName)||VALUATION_GROUPS[0];
+  return state.master.filter(group.test).map(d=>{const tx=state.transactions.filter(x=>x.drugKey===d.key),receivedTx=tx.filter(x=>x.type!=='จ่ายออก'),issuedTx=tx.filter(x=>x.type==='จ่ายออก'),lots=state.inventory.filter(x=>x.drugKey===d.key),received=receivedTx.reduce((s,x)=>s+(+x.qty||0),0),receivedValue=receivedTx.reduce((s,x)=>s+(+x.qty||0)*(+x.unitCost||0),0),issued=issuedTx.reduce((s,x)=>s+(+x.qty||0),0),issuedValue=issuedTx.reduce((s,x)=>s+(+x.qty||0)*(+x.unitCost||0),0),balance=lots.reduce((s,x)=>s+(+x.balance||0),0),balanceValue=lots.reduce((s,x)=>s+(+x.balance||0)*(+x.unitCost||0),0),unit=lots.find(x=>x.unit)?.unit||tx.find(x=>x.unit)?.unit||'',usage=valuationUsageMean(d.key),shortage=Math.max(0,usage.meanStock-balance);return{d,received,receivedValue,issued,issuedValue,balance,balanceValue,unit,...usage,shortage,belowMean:usage.meanStock>0&&balance<usage.meanStock}}).filter(x=>x.received||x.issued||x.balance).sort((a,b)=>String(a.d.no).localeCompare(String(b.d.no),'th',{numeric:true}));
+};
+renderValuationDetail=function(){
+  const body=$('#valuationDetailBody');if(!body)return;const table=body.closest('table'),head=table?.querySelector('thead tr');if(head)head.innerHTML='<th>ลำดับ</th><th>รายการยา / เวชภัณฑ์</th><th class="num">รับ</th><th class="num">มูลค่ารับ</th><th class="num">จ่าย</th><th class="num">มูลค่าจ่าย</th><th class="num">ใช้เฉลี่ย/เดือน</th><th class="num">Mean Stock ขั้นต่ำ</th><th class="num">คงเหลือ</th><th class="num">มูลค่าคงเหลือ</th><th>สถานะ</th>';
+  const rows=valuationDetailRows(valuationDetailGroup),sum=k=>rows.reduce((s,x)=>s+(+x[k]||0),0),low=rows.filter(x=>x.belowMean).length;
+  $$('[data-valuation-detail]').forEach(x=>x.classList.toggle('active',x.dataset.valuationDetail===valuationDetailGroup));
+  $('#valuationDetailSummary').innerHTML=`<b>${esc(valuationDetailGroup)}</b><span>${num(rows.length)} รายการ</span><span>มูลค่ารับ ${money(sum('receivedValue'))}</span><span>มูลค่าจ่าย ${money(sum('issuedValue'))}</span><span>มูลค่าคงเหลือ ${money(sum('balanceValue'))}</span><span style="color:${low?'#b21725':'#147164'};font-weight:800">ต่ำกว่า Mean Stock ${num(low)} รายการ</span>`;
+  body.innerHTML=rows.length?rows.map((x,i)=>`<tr class="${x.belowMean?'below-mean-stock':''}"><td>${i+1}</td><td><b>${esc(x.d.name)}</b><small>${esc([x.d.form,x.d.strength,x.unit].filter(Boolean).join(' · '))}</small></td><td class="num">${num(x.received)}</td><td class="num">${money(x.receivedValue)}</td><td class="num">${num(x.issued)}</td><td class="num">${money(x.issuedValue)}</td><td class="num"><b>${num(x.monthlyUse)}</b><small>${x.months?`ย้อนหลัง ${x.months} เดือน`:'ยังไม่มีการจ่าย'}</small></td><td class="num"><b>${num(x.meanStock)}</b></td><td class="num"><b>${num(x.balance)}</b></td><td class="num"><b>${money(x.balanceValue)}</b></td><td>${x.belowMean?`<span class="stock-low">ควรเติม ${num(x.shortage)}</span>`:`<span class="stock-ok">เพียงพอ</span>`}</td></tr>`).join(''):'<tr><td colspan="11" class="empty">ยังไม่มีข้อมูลรับ จ่าย หรือคงเหลือในประเภทนี้</td></tr>';
+  $('#valuationDetailFoot').innerHTML=rows.length?`<tr><th colspan="2">รวม ${num(rows.length)} รายการ</th><th class="num">${num(sum('received'))}</th><th class="num">${money(sum('receivedValue'))}</th><th class="num">${num(sum('issued'))}</th><th class="num">${money(sum('issuedValue'))}</th><th class="num">${num(sum('monthlyUse'))}</th><th class="num">${num(sum('meanStock'))}</th><th class="num">${num(sum('balance'))}</th><th class="num">${money(sum('balanceValue'))}</th><th>${low?`ต่ำ ${num(low)} รายการ`:'เพียงพอ'}</th></tr>`:'';
+  let note=$('#valuationMeanNote');if(!note){note=document.createElement('div');note.id='valuationMeanNote';note.className='valuation-mean-note';table?.parentElement?.after(note)}note.innerHTML='<b>หลักคำนวณ:</b> ใช้เฉลี่ยต่อเดือน = จำนวนจ่ายจริงย้อนหลังไม่เกิน 12 เดือน ÷ จำนวนเดือนตั้งแต่เริ่มมีข้อมูลในช่วงนั้น · Mean Stock ขั้นต่ำ = ปัดขึ้นจากการใช้เฉลี่ย 1 เดือน เพื่อมีสินค้าเพียงพอถึงรอบเบิกถัดไป';
+};
+document.addEventListener('DOMContentLoaded',renderValuationDetail);
+</script>
 <style id="responsive-device-layout">
 /* Responsive screen layout only. Printing rules remain A4 as configured above. */
 :root{--mobile-nav-height:68px}
