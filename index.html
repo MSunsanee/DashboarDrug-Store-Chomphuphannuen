@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="th">
 <head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
   <meta charset="utf-8">
   <meta name="viewport" content="width=1366,user-scalable=yes">
   <meta name="theme-color" content="#0f766e">
@@ -2019,7 +2022,15 @@ updateReqRow=function(...args){
   return result;
 };
 const renderBeforeMultiFacility=render;
-render=function(){renderBeforeMultiFacility();renderFacilityUI();renderDrugLabelPreview()};
+function enforceBlankRequisitionSignatures(){
+  const patient=$('#requisition .signatures');
+  if(patient)patient.innerHTML='<div><div class="sign-line"></div><div>(................................................)</div><div>ตำแหน่ง ................................................</div><div>ผู้เบิก / ผู้รับยา</div><div>วันที่ ____ / ____ / ______</div></div><div class="patient-reviewer-sign"><div class="sign-line"></div><div>(................................................)</div><div>ตำแหน่ง ................................................</div><div>ผู้ตรวจสอบ</div></div><div><div class="sign-line"></div><div>(................................................)</div><div>ตำแหน่ง ................................................</div><div>ผู้อนุมัติ</div></div>';
+  const hospitalHtml='<div><p>ผู้เบิกพัสดุ ...........................................................</p><p>(........................................................................)</p><p>ตำแหน่ง ................................................................</p><p>วันที่ ....................................................................</p><p>กรณีผู้เบิกไม่สามารถมารับด้วยตนเองได้ ขอมอบให้<br>........................................................................ เป็นผู้มารับพัสดุแทน</p></div><div><p>ผู้ตรวจสอบ ............................................................</p><p>(........................................................................)</p><p>ตำแหน่ง ................................................................</p><p>วันที่ ......................................................................</p></div><div><b>ผู้อนุมัติจ่ายพัสดุ</b><p>...........................................................................</p><p>(........................................................................)</p><p>ตำแหน่ง ................................................................</p><p>วันที่ ......................................................................</p></div><div><b>ผู้จ่ายพัสดุ</b><p>...........................................................................</p><p>(........................................................................)</p><p>ตำแหน่ง ................................................................</p><p>วันที่ ......................................................................</p></div><div><p>ได้รับของตามจำนวนและรายการที่จ่ายเรียบร้อยแล้ว</p><p>ผู้รับพัสดุ .............................................................</p><p>(........................................................................)</p><p>ตำแหน่ง ................................................................</p><p>วันที่ ......................................................................</p></div>';
+  $$('#requisition .p3101-screen-sign,.req-print-pages .req-p3101-sign').forEach(el=>el.innerHTML=hospitalHtml);
+  updateReqSignatureDate($('#reqDate')?.value||'');
+}
+render=function(){renderBeforeMultiFacility();renderFacilityUI();renderDrugLabelPreview();enforceBlankRequisitionSignatures()};
+window.addEventListener('beforeprint',enforceBlankRequisitionSignatures);
 if(typeof hospitalReqPrintSheet==='function'){const hospitalReqPrintSheetBeforeFacility=hospitalReqPrintSheet;hospitalReqPrintSheet=function(...args){const facility=state.facility||{};return hospitalReqPrintSheetBeforeFacility(...args).replaceAll('รพ.สต.บ้านชมภูพานเหนือ',facility.name||'').replaceAll('( <b>นายสังคม จันฤาไชย</b> )','(........................................................................)').replaceAll('ตำแหน่ง ผอ.'+(facility.name||''),'ตำแหน่ง ................................................................').replaceAll('<b>นายปริญญา กาญจนารัตน์</b> เป็นผู้มารับพัสดุแทน','........................................................................ เป็นผู้มารับพัสดุแทน').replaceAll('( <b>นายปริญญา กาญจนารัตน์</b> )','(........................................................................)').replaceAll('ตำแหน่ง พนักงานบริการ','ตำแหน่ง ................................................................')}}
 function clearFacilitySession_(){
   authUser=null;authToken='';districtRows=[];loadPromise=null;
