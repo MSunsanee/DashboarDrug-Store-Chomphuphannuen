@@ -2005,6 +2005,19 @@ renderStockCards=function(){
   const facility=state.facility||{},name=facility.name||authUser?.facilityName||'หน่วยบริการ';
   $$('#stockCardList .stock-template-head p').forEach(p=>{if(p.textContent.trim().startsWith('ชื่อสำนักงาน'))p.innerHTML=`ชื่อสำนักงาน <b>${esc(name)}</b> อ.ภูพาน จ.สกลนคร`});
 };
+const applyPermissionsBeforeDistrictMasterLock=applyPermissions;
+applyPermissions=function(){
+  applyPermissionsBeforeDistrictMasterLock();
+  const districtAdmin=!!(authUser?.isDistrictAdmin||state.isDistrictAdmin);
+  ['#importMasterExcel','#addMasterBtn','#manageLabelAboutBtn','.edit-master','.del-master'].forEach(sel=>$$(sel).forEach(el=>el.hidden=!districtAdmin));
+  $$('.master-stock-type,.master-usage,#masterForm input,#masterForm select,#masterForm textarea,#masterForm button,.req-unit-input').forEach(el=>el.disabled=!districtAdmin);
+};
+const updateReqRowBeforeDistrictMasterLock=updateReqRow;
+updateReqRow=function(...args){
+  const result=updateReqRowBeforeDistrictMasterLock(...args),districtAdmin=!!(authUser?.isDistrictAdmin||state.isDistrictAdmin);
+  args[0]?.querySelector('.req-unit-input')?.toggleAttribute('disabled',!districtAdmin);
+  return result;
+};
 const renderBeforeMultiFacility=render;
 render=function(){renderBeforeMultiFacility();renderFacilityUI()};
 if(typeof hospitalReqPrintSheet==='function'){const hospitalReqPrintSheetBeforeFacility=hospitalReqPrintSheet;hospitalReqPrintSheet=function(...args){const facility=state.facility||{};return hospitalReqPrintSheetBeforeFacility(...args).replaceAll('รพ.สต.บ้านชมภูพานเหนือ',facility.name||'').replaceAll('นายสังคม จันฤาไชย',facility.director||'........................................................')}}
