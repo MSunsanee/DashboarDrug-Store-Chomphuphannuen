@@ -1999,6 +1999,12 @@ function renderDistrictOverview(){
   $('#districtBody').innerHTML=rows.map(x=>`<tr><td><b>${esc(x.name)}</b><small>รหัส ${esc(x.id)}</small></td><td>${num(x.items)}</td><td>${num(x.lots)}</td><td>${num(x.balance)}</td><td>${money(x.value)}</td><td>${num(x.expired)}</td><td>${num(x.transactions)}</td><td>${num(x.requisitions)}</td><td><button class="icon-btn district-open" data-facility="${esc(x.id)}">เปิดคลัง</button></td></tr>`).join('');
   $$('.district-open').forEach(b=>b.onclick=async()=>{localStorage.setItem('ppcu-facility',b.dataset.facility);state={master:[],inventory:[],transactions:[],expired:[],requisitions:[],common:[]};await load({useCache:false});nav('inventory')});
 }
+const renderStockCardsBeforeFacility=renderStockCards;
+renderStockCards=function(){
+  renderStockCardsBeforeFacility();
+  const facility=state.facility||{},name=facility.name||authUser?.facilityName||'หน่วยบริการ';
+  $$('#stockCardList .stock-template-head p').forEach(p=>{if(p.textContent.trim().startsWith('ชื่อสำนักงาน'))p.innerHTML=`ชื่อสำนักงาน <b>${esc(name)}</b> อ.ภูพาน จ.สกลนคร`});
+};
 const renderBeforeMultiFacility=render;
 render=function(){renderBeforeMultiFacility();renderFacilityUI()};
 if(typeof hospitalReqPrintSheet==='function'){const hospitalReqPrintSheetBeforeFacility=hospitalReqPrintSheet;hospitalReqPrintSheet=function(...args){const facility=state.facility||{};return hospitalReqPrintSheetBeforeFacility(...args).replaceAll('รพ.สต.บ้านชมภูพานเหนือ',facility.name||'').replaceAll('นายสังคม จันฤาไชย',facility.director||'........................................................')}}
