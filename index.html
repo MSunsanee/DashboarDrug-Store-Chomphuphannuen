@@ -1970,7 +1970,7 @@ function installFacilityUI(){
   if($('#facilitySwitcher'))return;
   const bar=document.createElement('div');bar.id='facilitySwitcher';bar.className='facility-switcher no-print';
   $('.main .top')?.insertAdjacentElement('afterend',bar);
-  const page=document.createElement('section');page.id='district';page.className='page';page.innerHTML='<div class="district-grid" id="districtTotals"></div><div class="panel"><div class="panel-head"><div><h3>ภาพรวมสถานบริการทั้งหมด</h3><div class="hint">ข้อมูลคงคลังและเอกสารแยกตามหน่วยบริการ</div></div><button class="btn" id="refreshDistrict">รีเฟรชภาพรวม</button></div><div class="table-wrap"><table><thead><tr><th>หน่วยบริการ</th><th>รายการ</th><th>ล็อตคงเหลือ</th><th>จำนวนคงเหลือ</th><th>มูลค่า</th><th>หมดอายุ</th><th>รับ–จ่าย</th><th>ใบเบิก</th><th></th></tr></thead><tbody id="districtBody"></tbody></table></div></div>';
+  const page=document.createElement('section');page.id='district';page.className='page';page.innerHTML='<div class="district-grid" id="districtTotals"></div><div class="panel"><div class="panel-head"><div><h3>ภาพรวมสถานบริการทั้งหมด</h3><div class="hint">ข้อมูลคงคลัง เอกสาร และสถานะการเข้าใช้ระบบ แยกตามหน่วยบริการ</div></div><button class="btn" id="refreshDistrict">รีเฟรชภาพรวม</button></div><div class="table-wrap"><table><thead><tr><th>หน่วยบริการ</th><th>สถานะใช้งาน</th><th>ใช้งานล่าสุด</th><th>เข้าสู่ระบบ</th><th>รายการ</th><th>ล็อตคงเหลือ</th><th>จำนวนคงเหลือ</th><th>มูลค่า</th><th>หมดอายุ</th><th>รับ–จ่าย</th><th>ใบเบิก</th><th></th></tr></thead><tbody id="districtBody"></tbody></table></div></div>';
   $('.main')?.append(page);
   $('#refreshDistrict').onclick=loadDistrictOverview;
 }
@@ -1992,11 +1992,12 @@ async function loadDistrictOverview(){
   try{districtRows=await api('districtOverview');renderDistrictOverview()}catch(e){toast(e.message||'โหลดภาพรวมไม่สำเร็จ')}
 }
 function renderDistrictOverview(){
-  const rows=districtRows||[],sum=k=>rows.reduce((a,x)=>a+(+x[k]||0),0);
-  $('#districtTotals').innerHTML=`<div class="district-card"><b>สถานบริการ</b><strong>${rows.length}</strong> แห่ง</div><div class="district-card"><b>มูลค่าคงคลังรวม</b><strong>${money(sum('value'))}</strong></div><div class="district-card"><b>ล็อตคงเหลือ</b><strong>${num(sum('lots'))}</strong> ล็อต</div><div class="district-card"><b>ล็อตหมดอายุ</b><strong>${num(sum('expired'))}</strong> ล็อต</div>`;
-  $('#districtBody').innerHTML=rows.map(x=>`<tr><td><b>${esc(x.name)}</b><small>รหัส ${esc(x.id)}</small></td><td>${num(x.items)}</td><td>${num(x.lots)}</td><td>${num(x.balance)}</td><td>${money(x.value)}</td><td>${num(x.expired)}</td><td>${num(x.transactions)}</td><td>${num(x.requisitions)}</td><td><button class="icon-btn district-open" data-facility="${esc(x.id)}">เปิดคลัง</button></td></tr>`).join('');
+  const rows=districtRows||[],sum=k=>rows.reduce((a,x)=>a+(+x[k]||0),0),active=rows.filter(x=>x.hasUsed).length;
+  $('#districtTotals').innerHTML=`<div class="district-card"><b>เริ่มใช้ระบบแล้ว</b><strong>${active}/${rows.length}</strong> แห่ง</div><div class="district-card"><b>มูลค่าคงคลังรวม</b><strong>${money(sum('value'))}</strong></div><div class="district-card"><b>ล็อตคงเหลือ</b><strong>${num(sum('lots'))}</strong> ล็อต</div><div class="district-card"><b>ล็อตหมดอายุ</b><strong>${num(sum('expired'))}</strong> ล็อต</div>`;
+  $('#districtBody').innerHTML=rows.map(x=>`<tr><td><b>${esc(x.name)}</b><small>รหัส ${esc(x.id)}${x.lastUser?' · '+esc(x.lastUser):''}</small></td><td><span class="badge ${x.hasUsed?'':'red'}">${x.hasUsed?'ใช้งานแล้ว':'ยังไม่ใช้'}</span></td><td>${x.lastActiveAt?esc(facilityUsageDate_(x.lastActiveAt)):'-'}</td><td>${num(x.loginCount||0)} ครั้ง</td><td>${num(x.items)}</td><td>${num(x.lots)}</td><td>${num(x.balance)}</td><td>${money(x.value)}</td><td>${num(x.expired)}</td><td>${num(x.transactions)}</td><td>${num(x.requisitions)}</td><td><button class="icon-btn district-open" data-facility="${esc(x.id)}">เปิดคลัง</button></td></tr>`).join('');
   $$('.district-open').forEach(b=>b.onclick=async()=>{localStorage.setItem('ppcu-facility',b.dataset.facility);localStorage.setItem('ppcu-admin-facility',b.dataset.facility);state={master:[],inventory:[],transactions:[],expired:[],requisitions:[],common:[]};await load({useCache:false});nav('inventory')});
 }
+function facilityUsageDate_(value){const d=new Date(value);return isNaN(d)?'-':new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(d)}
 const renderStockCardsBeforeFacility=renderStockCards;
 renderStockCards=function(){
   renderStockCardsBeforeFacility();
