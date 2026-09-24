@@ -1966,6 +1966,37 @@ document.addEventListener('DOMContentLoaded',setupHistoryTransactionEditor);
 <style id="multi-facility-style">
 .facility-switcher{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;background:#ecf8f5;border:1px solid #bfe2da;border-radius:14px}.facility-switcher label{font-weight:800;color:#17665e}.facility-switcher select{min-width:270px;padding:9px 12px;border:1px solid #9bcfc4;border-radius:10px;background:#fff}.district-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.district-card{padding:16px;border-radius:16px;background:linear-gradient(145deg,#fff,#edf8f5);border:1px solid #cfe8e2}.district-card b{display:block;color:#17665e;margin-bottom:8px}.district-card strong{font-size:25px}.district-open{white-space:nowrap}@media(max-width:900px){.district-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.district-grid{grid-template-columns:1fr}.facility-switcher select{min-width:0;width:100%}}
 </style>
+<style id="requisition-print-only-style">
+/* Default requisition printing: exclude the dashboard and fill each A4 sheet. */
+@page{size:A4 portrait;margin:0}
+@media print{
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .side,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .top,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .mobile-nav,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .main>.page:not(#requisition),
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #dashboard,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .dashboard-expiry-alert,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #requisition>.req-paper,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #requisition>.req-actions{
+    display:none!important;
+  }
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .app,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) .main,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #requisition.page,
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #requisition>.req-print-pages{
+    display:block!important;width:210mm!important;margin:0!important;padding:0!important;
+  }
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #requisition>.req-print-pages>.req-paper{
+    box-sizing:border-box!important;width:210mm!important;height:297mm!important;
+    min-height:297mm!important;max-height:297mm!important;margin:0!important;
+    overflow:hidden!important;break-inside:avoid-page!important;page-break-inside:avoid!important;
+    break-after:page!important;page-break-after:always!important;
+  }
+  body:not(.print-official-cover):not(.print-reports):not(.print-stock-card) #requisition>.req-print-pages>.req-paper:last-child{
+    break-after:auto!important;page-break-after:auto!important;
+  }
+}
+</style>
 <script>
 /* ระบบหลายหน่วยบริการ: คลังแยกตามรหัสหน่วย และภาพรวมเฉพาะ Admin */
 META.district=['ภาพรวมระดับอำเภอ','สรุปคลังยาและเวชภัณฑ์ของสถานบริการทั้ง 8 แห่ง'];
@@ -2023,8 +2054,8 @@ updateReqRow=function(...args){
 };
 const renderBeforeMultiFacility=render;
 function enforceBlankRequisitionSignatures(){
-  const patient=$('#requisition .signatures');
-  if(patient)patient.innerHTML='<div><div class="sign-line"></div><div>(................................................)</div><div>................................................</div><div>ผู้เบิก / ผู้รับยา</div><div>วันที่ ____ / ____ / ______</div></div><div class="patient-reviewer-sign"><div class="sign-line"></div><div>(................................................)</div><div>................................................</div><div>ผู้ตรวจสอบ</div></div><div><div class="sign-line"></div><div>(................................................)</div><div>................................................</div><div>ผู้อนุมัติ</div></div>';
+  const patientHtml='<div><div class="sign-line"></div><div>(................................................)</div><div>................................................</div><div>ผู้เบิก / ผู้รับยา</div><div>วันที่ ____ / ____ / ______</div></div><div class="patient-reviewer-sign"><div class="sign-line"></div><div>(................................................)</div><div>................................................</div><div>ผู้ตรวจสอบ</div></div><div><div class="sign-line"></div><div>(................................................)</div><div>................................................</div><div>ผู้อนุมัติ</div></div>';
+  $$('#requisition .signatures').forEach(patient=>patient.innerHTML=patientHtml);
   const hospitalHtml='<div><p>ผู้เบิกพัสดุ ...........................................................</p><p>(........................................................................)</p><p>........................................................................</p><p>วันที่ ....................................................................</p><p>กรณีผู้เบิกไม่สามารถมารับด้วยตนเองได้ ขอมอบให้<br>........................................................................ เป็นผู้มารับพัสดุแทน</p></div><div><p>ผู้ตรวจสอบ ............................................................</p><p>(........................................................................)</p><p>........................................................................</p><p>วันที่ ......................................................................</p></div><div><b>ผู้อนุมัติจ่ายพัสดุ</b><p>...........................................................................</p><p>(........................................................................)</p><p>........................................................................</p><p>วันที่ ......................................................................</p></div><div><b>ผู้จ่ายพัสดุ</b><p>...........................................................................</p><p>(........................................................................)</p><p>........................................................................</p><p>วันที่ ......................................................................</p></div><div><p>ได้รับของตามจำนวนและรายการที่จ่ายเรียบร้อยแล้ว</p><p>ผู้รับพัสดุ .............................................................</p><p>(........................................................................)</p><p>........................................................................</p><p>วันที่ ......................................................................</p></div>';
   $$('#requisition .p3101-screen-sign,.req-print-pages .req-p3101-sign').forEach(el=>el.innerHTML=hospitalHtml);
   updateReqSignatureDate($('#reqDate')?.value||'');
