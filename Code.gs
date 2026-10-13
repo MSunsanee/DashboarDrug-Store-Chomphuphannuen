@@ -309,25 +309,26 @@ function lineAlertStatus_(){
 }
 
 function sendExpiryAlertsToLine_(force){
-  const config=lineExpiryConfig_(),now=new Date(),tz='Asia/Bangkok';
+  const now=new Date(),tz='Asia/Bangkok';
   const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const threeMonths=new Date(today);threeMonths.setMonth(threeMonths.getMonth()+3);
+  const sixMonths=new Date(today);sixMonths.setMonth(sixMonths.getMonth()+6);
   const masters=master_(),masterByKey=new Map(masters.map(x=>[String(x.key),x]));
   const alerts=rows_(SHEETS.INVENTORY).map(lot=>{
     const expiry=parseExpiryDate_(lot.expiry),balance=num_(lot.balance);
-    if(!expiry||balance<=0||expiry>threeMonths)return null;
-    const item=masterByKey.get(String(lot.drugKey))||{},days=Math.floor((expiry-today)/86400000);
-    return {item:item,lot:lot,expiry:expiry,balance:balance,days:days,expired:expiry<today};
+    if(!expiry||balance<=0||expiry>sixMonths)return null;
+    const item=masterByKey.get(String(lot.drugKey))||{},days=Math.floor((expiry-today)/86400000),expired=expiry<today;
+    return {item:item,lot:lot,expiry:expiry,balance:balance,days:days,expired:expired,severity:expired||expiry<=threeMonths?'red':'orange'};
   }).filter(Boolean).sort((a,b)=>a.expiry-b.expiry||String(a.item.name||'').localeCompare(String(b.item.name||''),'th'));
-  const dateKey=Utilities.formatDate(today,tz,'yyyy-MM-dd'),props=PropertiesService.getScriptProperties();
+  if(!alerts.length)return {sent:false,reason:'ไม่มีรายการใกล้หมดอายุหรือหมดอายุ',count:0,orange:0,red:0};
+  const config=lineExpiryConfig_(),dateKey=Utilities.formatDate(today,tz,'yyyy-MM-dd'),props=PropertiesService.getScriptProperties();
   const digest=Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify(alerts.map(x=>[x.lot.drugKey,x.lot.lotNo,Utilities.formatDate(x.expiry,tz,'yyyy-MM-dd'),x.balance]))));
   if(!force&&props.getProperty('LINE_EXPIRY_LAST_SENT_DATE')===dateKey&&props.getProperty('LINE_EXPIRY_LAST_DIGEST')===digest)return {sent:false,reason:'ส่งรายการชุดนี้แล้วในวันนี้',count:alerts.length};
   const messages=buildExpiryLineMessages_(alerts,today,force);
   linePushMessages_(config,messages);
   props.setProperties({LINE_EXPIRY_LAST_SENT_DATE:dateKey,LINE_EXPIRY_LAST_DIGEST:digest,LINE_EXPIRY_LAST_SENT_AT:new Date().toISOString()});
-  return {sent:true,count:alerts.length,expired:alerts.filter(x=>x.expired).length,messages:messages.length};
+  return {sent:true,count:alerts.length,orange:alerts.filter(x=>x.severity==='orange').length,red:alerts.filter(x=>x.severity==='red').length,expired:alerts.filter(x=>x.expired).length,messages:messages.length};
 }
-
 function lineExpiryConfig_(){
   const props=PropertiesService.getScriptProperties(),token=String(props.getProperty(LINE_EXPIRY_TOKEN_KEY_)||'').trim(),userId=String(props.getProperty(LINE_EXPIRY_USER_KEY_)||'').trim();
   if(!token||!userId)throw new Error('กรุณาตั้ง Script Properties: LINE_CHANNEL_ACCESS_TOKEN และ LINE_ALERT_USER_ID ก่อน');
@@ -343,19 +344,18 @@ function parseExpiryDate_(value){
 }
 
 function buildExpiryLineMessages_(alerts,today,force){
-  const tz='Asia/Bangkok',dateText=Utilities.formatDate(today,tz,'dd/MM/')+(today.getFullYear()+543),expired=alerts.filter(x=>x.expired).length;
-  const header='แจ้งเตือนวันหมดอายุคลังยาและเวชภัณฑ์\n'+(CURRENT_FACILITY_&&CURRENT_FACILITY_.name||'หน่วยบริการ')+'\nวันที่ '+dateText+'\nหมดอายุแล้ว '+expired+' ล็อต | เหลือไม่เกิน 3 เดือน '+(alerts.length-expired)+' ล็อต';
-  if(!alerts.length)return [header+'\n\n✅ '+(force?'ทดสอบสำเร็จ — ':'')+'ไม่พบรายการที่ต้องแจ้งเตือน'];
+  const tz='Asia/Bangkok',dateText=Utilities.formatDate(today,tz,'dd/MM/')+(today.getFullYear()+543),orange=alerts.filter(x=>x.severity==='orange').length,red=alerts.length-orange;
+  const header='แจ้งเตือนวันหมดอายุคลังยาและเวชภัณฑ์\n'+(CURRENT_FACILITY_&&CURRENT_FACILITY_.name||'หน่วยบริการ')+'\nวันที่ '+dateText+'\nสีส้ม ≤ 6 เดือน '+orange+' ล็อต · สีแดง ≤ 3 เดือน/หมดอายุ '+red+' ล็อต';
   const lines=alerts.map((x,i)=>{
     const item=x.item||{},detail=[item.name||String(x.lot.drugKey||'ไม่ทราบชื่อ'),item.form,item.strength].filter(Boolean).join(' · ');
-    const type=item.stockType||item.category||'ไม่ระบุประเภท',status=x.expired?'🔴🔴 หมดอายุแล้ว '+Math.abs(x.days)+' วัน':'🔴 เหลือ '+x.days+' วัน (ไม่เกิน 3 เดือน)';
+    const type=item.stockType||item.category||'ไม่ระบุประเภท';
+    const status=x.expired?'🔴🔴 หมดอายุแล้ว '+Math.abs(x.days)+' วัน':x.severity==='red'?'🔴 เหลือ '+x.days+' วัน (ไม่เกิน 3 เดือน)':'🟠 เหลือ '+x.days+' วัน (ไม่เกิน 6 เดือน)';
     return (i+1)+'. '+status+'\n'+detail+'\nประเภท: '+type+' | Lot: '+(x.lot.lotNo||'-')+'\nหมดอายุ: '+Utilities.formatDate(x.expiry,tz,'dd/MM/yyyy')+' | คงเหลือ: '+x.balance+' '+(x.lot.unit||item.unit||'');
   });
   const chunks=[],limit=3900;let current=header;
   lines.forEach(line=>{const next=current+'\n\n'+line;if(next.length>limit){chunks.push(current);current=line}else current=next});if(current)chunks.push(current);
   return chunks;
 }
-
 function linePushMessages_(config,texts){
   for(let i=0;i<texts.length;i+=5){
     const response=UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push',{method:'post',contentType:'application/json',headers:{Authorization:'Bearer '+config.token},payload:JSON.stringify({to:config.userId,messages:texts.slice(i,i+5).map(text=>({type:'text',text:text}))}),muteHttpExceptions:true});
@@ -367,16 +367,17 @@ function linePushMessages_(config,texts){
 function notifyInboundExpiryToLine_(p){
   try{
     const expiry=parseExpiryDate_(p.expiry);if(!expiry)return {sent:false,reason:'ไม่มีวันหมดอายุ'};
-    const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()),limit=new Date(today);limit.setMonth(limit.getMonth()+3);
-    if(expiry>limit)return {sent:false,reason:'อายุคงเหลือเกิน 3 เดือน'};
+    const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate()),threeMonths=new Date(today),sixMonths=new Date(today);
+    threeMonths.setMonth(threeMonths.getMonth()+3);sixMonths.setMonth(sixMonths.getMonth()+6);
+    if(expiry>sixMonths)return {sent:false,reason:'อายุคงเหลือเกิน 6 เดือน'};
     const item=master_().find(x=>String(x.key)===String(p.drugKey))||{};
     const lot=rows_(SHEETS.INVENTORY).find(x=>String(x.drugKey)===String(p.drugKey)&&String(x.lotNo||'')===String(p.lotNo||''))||{};
-    const balance=num_(lot.balance)||num_(p.qty),days=Math.floor((expiry-today)/86400000),expired=expiry<today,tz='Asia/Bangkok';
+    const balance=num_(lot.balance)||num_(p.qty),days=Math.floor((expiry-today)/86400000),expired=expiry<today,severity=expired||expiry<=threeMonths?'red':'orange',tz='Asia/Bangkok';
     const detail=[item.name||String(p.drugKey||'ไม่ทราบชื่อ'),item.form,item.strength].filter(Boolean).join(' · ');
-    const status=expired?'🔴🔴 หมดอายุแล้ว '+Math.abs(days)+' วัน':'🔴 เหลือ '+days+' วัน (ไม่เกิน 3 เดือน)';
+    const status=expired?'🔴🔴 หมดอายุแล้ว '+Math.abs(days)+' วัน':severity==='red'?'🔴 เหลือ '+days+' วัน (ไม่เกิน 3 เดือน)':'🟠 เหลือ '+days+' วัน (ไม่เกิน 6 เดือน)';
     const text='แจ้งเตือนรับเข้ารายการใกล้หมดอายุ\n'+(CURRENT_FACILITY_&&CURRENT_FACILITY_.name||'หน่วยบริการ')+'\n\n'+status+'\n'+detail+'\nประเภท: '+(item.stockType||item.category||'ไม่ระบุ')+' | Lot: '+(p.lotNo||'-')+'\nหมดอายุ: '+Utilities.formatDate(expiry,tz,'dd/MM/yyyy')+' | คงเหลือ: '+balance+' '+(p.unit||lot.unit||'')+'\nผู้บันทึก: '+(p.recorder||'-');
     linePushMessages_(lineExpiryConfig_(),[text]);
-    return {sent:true,expired:expired,days:days};
+    return {sent:true,expired:expired,days:days,severity:severity};
   }catch(err){
     console.error('Immediate LINE expiry alert failed: '+String(err&&err.stack||err));
     return {sent:false,error:String(err&&err.message||err)};
