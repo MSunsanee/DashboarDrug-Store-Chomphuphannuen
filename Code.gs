@@ -274,11 +274,10 @@ function bulkCreateMasterUsage_(rows){
 
 /* LINE OA: แจ้งเตือนล็อตคงคลังที่หมดอายุหรือเหลืออายุไม่เกิน 3 เดือน
  * ตั้งค่าใน Apps Script > Project Settings > Script Properties:
- * LINE_CHANNEL_ACCESS_TOKEN และ LINE_ALERT_USER_ID
+ * LINE_CHANNEL_ACCESS_TOKEN (ส่งถึงเพื่อน LINE OA ทุกคน)
  */
 const LINE_EXPIRY_HANDLER_='sendExpiryAlertsToLine';
 const LINE_EXPIRY_TOKEN_KEY_='LINE_CHANNEL_ACCESS_TOKEN';
-const LINE_EXPIRY_USER_KEY_='LINE_ALERT_USER_ID';
 
 function installDailyExpiryAlertTrigger(){
   try{
@@ -303,12 +302,10 @@ function sendExpiryAlertsToLine(){return sendExpiryAlertsToLine_(false)}
 function testLineExpiryAlert(){return sendExpiryAlertsToLine_(true)}
 
 function lineAlertStatus_(){
-  const props=PropertiesService.getScriptProperties(),hasToken=!!String(props.getProperty(LINE_EXPIRY_TOKEN_KEY_)||'').trim(),hasUser=!!String(props.getProperty(LINE_EXPIRY_USER_KEY_)||'').trim();
+  const props=PropertiesService.getScriptProperties(),hasToken=!!String(props.getProperty(LINE_EXPIRY_TOKEN_KEY_)||'').trim();
   const triggers=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===LINE_EXPIRY_HANDLER_).length;
-  return {configured:hasToken&&hasUser,hasToken:hasToken,hasUser:hasUser,triggers:triggers,lastSentAt:props.getProperty('LINE_EXPIRY_LAST_SENT_AT')||'',lastDate:props.getProperty('LINE_EXPIRY_LAST_SENT_DATE')||''};
-}
-
-function sendExpiryAlertsToLine_(force){
+  return {configured:hasToken,hasToken:hasToken,recipient:'allFriends',triggers:triggers,lastSentAt:props.getProperty('LINE_EXPIRY_LAST_SENT_AT')||'',lastDate:props.getProperty('LINE_EXPIRY_LAST_SENT_DATE')||''};
+}function sendExpiryAlertsToLine_(force){
   const now=new Date(),tz='Asia/Bangkok';
   const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const threeMonths=new Date(today);threeMonths.setMonth(threeMonths.getMonth()+3);
@@ -330,12 +327,10 @@ function sendExpiryAlertsToLine_(force){
   return {sent:true,count:alerts.length,orange:alerts.filter(x=>x.severity==='orange').length,red:alerts.filter(x=>x.severity==='red').length,expired:alerts.filter(x=>x.expired).length,messages:messages.length};
 }
 function lineExpiryConfig_(){
-  const props=PropertiesService.getScriptProperties(),token=String(props.getProperty(LINE_EXPIRY_TOKEN_KEY_)||'').trim(),userId=String(props.getProperty(LINE_EXPIRY_USER_KEY_)||'').trim();
-  if(!token||!userId)throw new Error('กรุณาตั้ง Script Properties: LINE_CHANNEL_ACCESS_TOKEN และ LINE_ALERT_USER_ID ก่อน');
-  return {token:token,userId:userId};
-}
-
-function parseExpiryDate_(value){
+  const props=PropertiesService.getScriptProperties(),token=String(props.getProperty(LINE_EXPIRY_TOKEN_KEY_)||'').trim();
+  if(!token)throw new Error('กรุณาตั้ง Script Properties: LINE_CHANNEL_ACCESS_TOKEN ก่อน');
+  return {token:token};
+}function parseExpiryDate_(value){
   if(value instanceof Date&&!isNaN(value))return new Date(value.getFullYear(),value.getMonth(),value.getDate());
   const s=String(value||'').trim();if(!s)return null;
   let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/),y,mo,d;
@@ -358,7 +353,7 @@ function buildExpiryLineMessages_(alerts,today,force){
 }
 function linePushMessages_(config,texts){
   for(let i=0;i<texts.length;i+=5){
-    const response=UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push',{method:'post',contentType:'application/json',headers:{Authorization:'Bearer '+config.token},payload:JSON.stringify({to:config.userId,messages:texts.slice(i,i+5).map(text=>({type:'text',text:text}))}),muteHttpExceptions:true});
+    const response=UrlFetchApp.fetch('https://api.line.me/v2/bot/message/broadcast',{method:'post',contentType:'application/json',headers:{Authorization:'Bearer '+config.token},payload:JSON.stringify({messages:texts.slice(i,i+5).map(text=>({type:'text',text:text}))}),muteHttpExceptions:true});
     const code=response.getResponseCode();if(code<200||code>=300)throw new Error('LINE Messaging API ส่งไม่สำเร็จ (HTTP '+code+'): '+response.getContentText().slice(0,500));
   }
 }
