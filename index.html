@@ -2124,4 +2124,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(!authUser||!authToken){clearFacilitySession_();render();updateAuthProfile();openLogin()}
 });
 </script>
-</body></html>
+<style>
+/* Stock Card fits the available screen width; print sizing remains controlled by print rules. */
+@media screen {
+  #stockCardList .stock-card { box-sizing:border-box; width:100%; max-width:100%; min-width:0; }
+  #stockCardList .stock-card-table-wrap { width:100%; max-width:100%; overflow-x:hidden; }
+  #stockCardList .stock-template-table { box-sizing:border-box; width:100% !important; min-width:0 !important; max-width:100%; table-layout:fixed; font-size:clamp(8px, .7vw, 12px); }
+  #stockCardList .stock-template-table th,
+  #stockCardList .stock-template-table td { padding:clamp(2px, .22vw, 4px); overflow-wrap:anywhere; }
+}
+</style></body></html>
